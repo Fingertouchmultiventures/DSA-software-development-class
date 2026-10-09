@@ -5,4 +5,6 @@ function greet(studentName) {
 const students = [
   "Ava", "Liam", "Olivia", "Noah", "Emma"];
 
-  console.log(students.join("\n"));
+students.forEach((studentName) => {
+  console.log(greet(studentName));
+});
