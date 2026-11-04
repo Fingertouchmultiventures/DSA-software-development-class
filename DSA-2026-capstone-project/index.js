@@ -1,9 +1,22 @@
 import { greet,farewell } from './greetings.js';
 import bookings from './object.js';
+import Counter from './class.js';
 
-const name = 'DSA Project 2026';
+const name = 'John Doe';
 
 let greetingMessage = greet(name);
 let farewellMessage = farewell(name);
 
-console.log(bookings.get('G5SL75'));
+console.log(greetingMessage);
+console.log(farewellMessage);
+
+console.log('Current bookings:');
+for (const [id, booking] of bookings) {
+  console.log(`Booking ID: ${id}, Owner: ${booking.owner}, Seat: ${booking.seat}, Price: $${booking.price.toFixed(2)}`);
+}
+
+const counter = new Counter();
+
+console.log(counter.value); // Output: 0
+counter.increment();
+console.log(counter.value); // Output: 1
