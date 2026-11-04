@@ -83,3 +83,4 @@ its value or methods are used. The sample booking map is a default export;
 
 See [architecture.md](architecture.md) for how the modules fit together and
 [ai-log.md](ai-log.md) for the implementation prompts, results, and corrections.
+Continue with [Build 2](build-2.md) for publishing, search, sorting, and tests.

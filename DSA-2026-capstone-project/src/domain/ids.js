@@ -1,7 +1,7 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 
 const REFERENCE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-const DEFAULT_REFERENCE_LENGTH = 8;
+const DEFAULT_REFERENCE_LENGTH = 32;
 
 export function newId() {
   return randomUUID();

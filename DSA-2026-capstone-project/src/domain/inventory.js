@@ -101,6 +101,31 @@ export function createEvent(store, details) {
   return event;
 }
 
+export function publishEvent(store, eventId) {
+  requireStore(store);
+  requireText(eventId, 'eventId');
+  const event = getEvent(store, eventId);
+  if (event.status !== 'draft') {
+    throw new DomainError('INVALID_STATE', 'Only draft events can be published');
+  }
+  if (event.tierIds.length === 0) {
+    throw new DomainError('INVALID_STATE', 'An event needs at least one ticket tier before publishing');
+  }
+  event.status = 'published';
+  return event;
+}
+
+export function unpublishEvent(store, eventId) {
+  requireStore(store);
+  requireText(eventId, 'eventId');
+  const event = getEvent(store, eventId);
+  if (event.status !== 'published') {
+    throw new DomainError('INVALID_STATE', 'Only published events can be unpublished');
+  }
+  event.status = 'draft';
+  return event;
+}
+
 export function addTier(store, eventId, details) {
   requireStore(store);
   requireText(eventId, 'eventId');
@@ -129,6 +154,40 @@ export function seatsLeft(tier) {
     throw new DomainError('VALIDATION', 'tier must have whole-number capacity and sold counts');
   }
   return tier.capacity - tier.sold;
+}
+
+export function listEventSummaries(store, { publishedOnly = true } = {}) {
+  requireStore(store);
+  if (typeof publishedOnly !== 'boolean') {
+    throw new DomainError('VALIDATION', 'publishedOnly must be a boolean');
+  }
+
+  const summaries = [];
+  for (const event of store.events.values()) {
+    if (publishedOnly && event.status !== 'published') continue;
+    const tiers = event.tierIds.map((tierId) => getTier(store, tierId));
+    let minPriceCents = null;
+    let available = 0;
+    for (const tier of tiers) {
+      minPriceCents = minPriceCents === null
+        ? tier.priceCents
+        : Math.min(minPriceCents, tier.priceCents);
+      available += seatsLeft(tier);
+    }
+
+    summaries.push({
+      id: event.id,
+      title: event.title,
+      city: event.city,
+      venue: event.venue,
+      startsAt: event.startsAt,
+      status: event.status,
+      tierCount: tiers.length,
+      minPriceCents,
+      seatsLeft: available,
+    });
+  }
+  return summaries;
 }
 
 export function bookTickets(store, tierId, userId, quantity) {

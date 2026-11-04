@@ -40,3 +40,18 @@ verify Build 1.
 After these corrections, `node index.js` and `npm run demo` completed
 successfully. `npm run benchmark` also ran and printed timings for `Array.find`
 and `Map.get`.
+
+## Build 2
+
+### Prompt 1: Implement Build 2 and prepare it for deployment
+
+- **What I asked:** Add the Build 2 search, stable sorting, publishing,
+  user-story acceptance tests, and an npm test command; include General, VIP,
+  Red Carpet, and Couple Pass ticket levels.
+- **What came back:** Added event summaries and publish/unpublish operations,
+  pure search filters, a non-mutating merge sort, Node test coverage, sample
+  tier levels in the demo, and Build 2 documentation.
+- **What was wrong (or "nothing"):** The first expected date-sort order in a
+  test did not account for the earlier event time on the same day. The test
+  expectation was corrected to match chronological ordering; the suite then
+  passed.

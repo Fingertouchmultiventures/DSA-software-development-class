@@ -6,25 +6,36 @@ import {
   createStore,
   findBookingByReference,
   joinWaitlist,
+  listEventSummaries,
   offerNextOnWaitlist,
+  publishEvent,
   seatsLeft,
 } from '../src/domain/inventory.js';
 import { DomainError } from '../src/domain/errors.js';
 
 const store = createStore();
 const event = createEvent(store, {
-  title: 'Lagos Tech Meetup',
+  title: 'O2 Solution Hub Demo Day',
   city: 'Lagos',
-  venue: 'Yaba Hub',
+  venue: 'Cafe One',
   startsAt: '2026-12-05T17:00:00Z',
   organizerId: 'organizer-1',
 });
-const tier = addTier(store, event.id, {
-  name: 'General',
-  priceCents: 500_000,
-  capacity: 3,
-});
-console.log(`Created "${event.title}" with ${tier.capacity} seats in ${tier.name}.\n`);
+const tiers = [
+  { name: 'General', priceCents: 1500_000, capacity: 3 },
+  { name: 'VIP', priceCents: 2500_000, capacity: 20 },
+  { name: 'Red Carpet', priceCents: 5000_000, capacity: 10 },
+  { name: 'Couple Pass', priceCents: 2700_000, capacity: 10 },
+].map((details) => addTier(store, event.id, details));
+const [tier] = tiers;
+publishEvent(store, event.id);
+console.log(`Created "${event.title}" with ticket levels:`);
+for (const item of tiers) {
+  const packageNote = item.name === 'Couple Pass' ? ' (admits two people per pass)' : '';
+  console.log(`- ${item.name}: ${item.priceCents} cents, ${item.capacity} available${packageNote}`);
+}
+console.log('Public listing:', listEventSummaries(store)[0]);
+console.log();
 
 function attempt(label, action) {
   try {
