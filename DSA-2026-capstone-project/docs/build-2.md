@@ -11,7 +11,10 @@ creation, ticket tiers, publishing, event discovery, and booking capacity.
 - Events start as drafts; organizers can publish events with ticket tiers and
   unpublish them again.
 - Public event summaries include the cheapest tier price and total available
-  ticket units. Draft events are hidden by default.
+  attendee places, accounting for couple and table packages. Draft events are
+  hidden by default.
+- An event can have a hall-capacity limit. Tier allocations cannot exceed it,
+  and organizers can reallocate unbooked attendee places between ticket tiers.
 - Search filters by title or venue, city, inclusive date range, maximum price,
   and availability.
 - A stable merge sort orders events by date, price, or availability without
@@ -22,11 +25,24 @@ creation, ticket tiers, publishing, event discovery, and booking capacity.
 
 ## Sample ticket levels
 
-The terminal demo includes **General**, **VIP**, **Red Carpet**, and **Couple
-Pass** ticket levels. The sample prices are illustrative whole-cent values,
-not a production price list. A Couple Pass is one sellable package that admits
-two people; its inventory capacity counts packages, while the other levels
-count individual tickets.
+The terminal demo includes **General**, **VIP**, **Red Carpet**, **Couple
+Pass**, and table packages. The sample prices are illustrative whole-cent
+values, not a production price list. A Couple Pass is one sellable package
+that admits two people; table capacities count tables, with each table's guest
+count contributing to attendee-place totals. The 150-person demo hall assigns
+its 45 additional places to General.
+
+If demand changes, move available capacity from an unsold tier. For example,
+to move two General attendee places to VIP:
+
+```js
+reallocateTierCapacity(store, general.id, vip.id, 2);
+```
+
+The amount must be an exact whole-unit fit for both tiers. For example, moving
+places to a Couple Pass requires an even number. Reallocation cannot take
+capacity already booked, move capacity between different events, or exceed
+the hall limit.
 
 ## Run and verify
 
@@ -38,6 +54,11 @@ npm run demo
 npm test
 npm run benchmark
 ```
+
+The demo injects a fixed clock into its in-memory store so each example
+booking can show a chosen timestamp. Some bookings share the same timestamp
+to represent people booking at the same time. Normal stores use the current
+system time.
 
 ### Done when
 

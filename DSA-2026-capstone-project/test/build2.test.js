@@ -7,6 +7,7 @@ import {
   createStore,
   listEventSummaries,
   publishEvent,
+  reallocateTierCapacity,
   seatsLeft,
   unpublishEvent,
 } from '../src/domain/inventory.js';
@@ -69,6 +70,124 @@ describe('Build 2 event inventory', () => {
       () => addTier(store, 'missing-event', { name: 'General', priceCents: 100, capacity: 5 }),
       'NOT_FOUND',
     );
+  });
+
+  it('keeps tier allocations within the event hall capacity', () => {
+    const event = createEvent(store, {
+      ...eventDetails('Lagos Meetup', 'Lagos', '2026-12-05'),
+      hallCapacity: 10,
+    });
+    addTier(store, event.id, {
+      name: 'General',
+      priceCents: 500_000,
+      capacity: 6,
+    });
+    assertCode(
+      () => addTier(store, event.id, { name: 'VIP', priceCents: 1_000_000, capacity: 5 }),
+      'CAPACITY_EXCEEDED',
+    );
+    assert.equal(listEventSummaries(store, { publishedOnly: false })[0].seatsLeft, 6);
+  });
+
+  it('reallocates unbooked hall places between tiers, including packages', () => {
+    const event = createEvent(store, {
+      ...eventDetails('Lagos Meetup', 'Lagos', '2026-12-05'),
+      hallCapacity: 20,
+    });
+    const general = addTier(store, event.id, {
+      name: 'General',
+      priceCents: 500_000,
+      capacity: 10,
+    });
+    const vip = addTier(store, event.id, {
+      name: 'VIP',
+      priceCents: 1_000_000,
+      capacity: 2,
+    });
+    const couple = addTier(store, event.id, {
+      name: 'Couple Pass',
+      priceCents: 900_000,
+      capacity: 2,
+      guestsPerUnit: 2,
+    });
+    const table = addTier(store, event.id, {
+      name: 'Table for 4',
+      priceCents: 2_000_000,
+      capacity: 1,
+      guestsPerUnit: 4,
+    });
+    bookTickets(store, general.id, 'booked-general', 3);
+
+    reallocateTierCapacity(store, general.id, vip.id, 2);
+    reallocateTierCapacity(store, vip.id, couple.id, 2);
+    reallocateTierCapacity(store, general.id, table.id, 4);
+
+    assert.equal(general.capacity, 4);
+    assert.equal(general.sold, 3);
+    assert.equal(seatsLeft(general), 1);
+    assert.equal(vip.capacity, 2);
+    assert.equal(couple.capacity, 3);
+    assert.equal(table.capacity, 2);
+    const allocatedPlaces = [general, vip, couple, table]
+      .reduce((total, tier) => total + tier.capacity * tier.guestsPerUnit, 0);
+    assert.equal(allocatedPlaces, event.hallCapacity);
+  });
+
+  it('reports available attendee places rather than package counts', () => {
+    const event = createEvent(store, {
+      ...eventDetails('Lagos Meetup', 'Lagos', '2026-12-05'),
+      hallCapacity: 10,
+    });
+    addTier(store, event.id, {
+      name: 'General',
+      priceCents: 500_000,
+      capacity: 2,
+    });
+    addTier(store, event.id, {
+      name: 'Couple Pass',
+      priceCents: 900_000,
+      capacity: 2,
+      guestsPerUnit: 2,
+    });
+    assert.equal(
+      listEventSummaries(store, { publishedOnly: false })[0].seatsLeft,
+      6,
+    );
+  });
+
+  it('rejects invalid, incompatible, cross-event, and already-booked reallocations', () => {
+    const event = createEvent(store, {
+      ...eventDetails('Lagos Meetup', 'Lagos', '2026-12-05'),
+      hallCapacity: 20,
+    });
+    const general = addTier(store, event.id, {
+      name: 'General',
+      priceCents: 500_000,
+      capacity: 5,
+    });
+    const couple = addTier(store, event.id, {
+      name: 'Couple Pass',
+      priceCents: 900_000,
+      capacity: 2,
+      guestsPerUnit: 2,
+    });
+    const otherEvent = createEvent(store, {
+      ...eventDetails('Other event', 'Abuja', '2026-12-06'),
+      hallCapacity: 10,
+    });
+    const otherTier = addTier(store, otherEvent.id, {
+      name: 'General',
+      priceCents: 500_000,
+      capacity: 5,
+    });
+
+    bookTickets(store, general.id, 'attendee-1', 4);
+    assertCode(() => reallocateTierCapacity(store, general.id, couple.id, 1), 'VALIDATION');
+    assertCode(() => reallocateTierCapacity(store, general.id, couple.id, 2), 'CAPACITY_EXCEEDED');
+    assertCode(() => reallocateTierCapacity(store, general.id, otherTier.id, 1), 'VALIDATION');
+    assertCode(() => reallocateTierCapacity(store, general.id, couple.id, 0), 'VALIDATION');
+    assert.equal(general.capacity, 5);
+    assert.equal(couple.capacity, 2);
   });
 
   it('publishes tiered events, hides drafts, and allows unpublishing', () => {
@@ -222,6 +341,22 @@ describe('Build 2 event search and sorting', () => {
 });
 
 describe('Build 2 booking capacity', () => {
+  it('uses the injected store clock for deterministic booking timestamps', () => {
+    const bookedAt = new Date('2026-11-02T15:00:00Z');
+    const store = createStore({ now: () => bookedAt });
+    const event = createEvent(store, eventDetails('Meetup', 'Lagos', '2026-12-05'));
+    const tier = addTier(store, event.id, { name: 'General', priceCents: 500_000, capacity: 3 });
+    const booking = bookTickets(store, tier.id, 'attendee-1', 1);
+    assert.equal(booking.createdAt, bookedAt.toISOString());
+  });
+
+  it('rejects an injected clock that does not return a valid Date', () => {
+    const store = createStore({ now: () => 'not-a-date' });
+    const event = createEvent(store, eventDetails('Meetup', 'Lagos', '2026-12-05'));
+    const tier = addTier(store, event.id, { name: 'General', priceCents: 500_000, capacity: 3 });
+    assertCode(() => bookTickets(store, tier.id, 'attendee-1', 1), 'VALIDATION');
+  });
+
   it('books within capacity in whole cents and leaves the expected seats', () => {
     const store = createStore();
     const event = createEvent(store, eventDetails('Meetup', 'Lagos', '2026-12-05'));

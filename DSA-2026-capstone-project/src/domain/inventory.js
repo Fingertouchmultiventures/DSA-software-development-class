@@ -6,13 +6,18 @@ export const MAX_TICKETS_PER_BOOKING = 10;
 
 const HOLDS_SEATS = new Set(['pending', 'paid']);
 
-export function createStore() {
+export function createStore({ now = () => new Date() } = {}) {
+  if (typeof now !== 'function') {
+    throw new DomainError('VALIDATION', 'now must be a function that returns a Date');
+  }
+
   return {
     events: new Map(),
     tiers: new Map(),
     bookings: new Map(),
     bookingsByReference: new Map(),
     waitlists: new Map(),
+    now,
   };
 }
 
@@ -86,6 +91,9 @@ export function createEvent(store, details) {
   if (Number.isNaN(date.getTime())) {
     throw new DomainError('VALIDATION', 'startsAt must be a valid date');
   }
+  const hallCapacity = details.hallCapacity === undefined
+    ? undefined
+    : requireWholeNumber(details.hallCapacity, 'hallCapacity', 1);
 
   const event = {
     id: newId(),
@@ -94,6 +102,7 @@ export function createEvent(store, details) {
     city,
     venue: venue.trim(),
     startsAt: date.toISOString(),
+    hallCapacity,
     status: 'draft',
     tierIds: [],
   };
@@ -134,6 +143,29 @@ export function addTier(store, eventId, details) {
   const name = requireText(details.name, 'Tier name');
   const priceCents = requireWholeNumber(details.priceCents, 'priceCents', 0);
   const capacity = requireWholeNumber(details.capacity, 'capacity', 1);
+  const guestsPerUnit = details.guestsPerUnit === undefined
+    ? 1
+    : requireWholeNumber(details.guestsPerUnit, 'guestsPerUnit', 1);
+  const alreadyAllocated = event.tierIds.reduce((total, tierId) => {
+    const tier = getTier(store, tierId);
+    return total + tier.capacity * tier.guestsPerUnit;
+  }, 0);
+  const requestedPlaces = capacity * guestsPerUnit;
+  if (
+    !Number.isSafeInteger(requestedPlaces)
+    || !Number.isSafeInteger(alreadyAllocated + requestedPlaces)
+  ) {
+    throw new DomainError('VALIDATION', 'tier capacity in attendee places must be a safe whole number');
+  }
+  if (
+    event.hallCapacity !== undefined
+    && alreadyAllocated + requestedPlaces > event.hallCapacity
+  ) {
+    throw new DomainError(
+      'CAPACITY_EXCEEDED',
+      `Ticket tiers cannot allocate more than the hall capacity of ${event.hallCapacity}`,
+    );
+  }
 
   const tier = {
     id: newId(),
@@ -142,11 +174,54 @@ export function addTier(store, eventId, details) {
     priceCents,
     capacity,
     sold: 0,
+    guestsPerUnit,
   };
   store.tiers.set(tier.id, tier);
   store.waitlists.set(tier.id, new Queue());
   event.tierIds.push(tier.id);
   return tier;
+}
+
+export function reallocateTierCapacity(store, fromTierId, toTierId, attendeePlaces) {
+  requireStore(store);
+  requireText(fromTierId, 'fromTierId');
+  requireText(toTierId, 'toTierId');
+  requireWholeNumber(attendeePlaces, 'attendeePlaces', 1);
+  if (fromTierId === toTierId) {
+    throw new DomainError('VALIDATION', 'Capacity must be moved between two different tiers');
+  }
+
+  const fromTier = getTier(store, fromTierId);
+  const toTier = getTier(store, toTierId);
+  if (fromTier.eventId !== toTier.eventId) {
+    throw new DomainError('VALIDATION', 'Ticket tiers must belong to the same event');
+  }
+
+  if (
+    attendeePlaces % fromTier.guestsPerUnit !== 0
+    || attendeePlaces % toTier.guestsPerUnit !== 0
+  ) {
+    throw new DomainError(
+      'VALIDATION',
+      `Capacity must be divisible by both tiers' guest counts per unit`,
+    );
+  }
+
+  const fromUnits = attendeePlaces / fromTier.guestsPerUnit;
+  const toUnits = attendeePlaces / toTier.guestsPerUnit;
+  if (seatsLeft(fromTier) < fromUnits) {
+    throw new DomainError(
+      'CAPACITY_EXCEEDED',
+      `${fromTier.name} does not have ${attendeePlaces} unbooked attendee places to reallocate`,
+    );
+  }
+  if (!Number.isSafeInteger(toTier.capacity + toUnits)) {
+    throw new DomainError('VALIDATION', 'target tier capacity must remain a safe whole number');
+  }
+
+  fromTier.capacity -= fromUnits;
+  toTier.capacity += toUnits;
+  return { fromTier, toTier, attendeePlaces, fromUnits, toUnits };
 }
 
 export function seatsLeft(tier) {
@@ -172,7 +247,7 @@ export function listEventSummaries(store, { publishedOnly = true } = {}) {
       minPriceCents = minPriceCents === null
         ? tier.priceCents
         : Math.min(minPriceCents, tier.priceCents);
-      available += seatsLeft(tier);
+      available += seatsLeft(tier) * tier.guestsPerUnit;
     }
 
     summaries.push({
@@ -182,6 +257,7 @@ export function listEventSummaries(store, { publishedOnly = true } = {}) {
       venue: event.venue,
       startsAt: event.startsAt,
       status: event.status,
+      hallCapacity: event.hallCapacity,
       tierCount: tiers.length,
       minPriceCents,
       seatsLeft: available,
@@ -209,6 +285,10 @@ export function bookTickets(store, tierId, userId, quantity) {
   if (!Number.isSafeInteger(amountCents)) {
     throw new DomainError('VALIDATION', 'booking total must be a whole number of safe cents');
   }
+  const createdAt = store.now();
+  if (!(createdAt instanceof Date) || Number.isNaN(createdAt.getTime())) {
+    throw new DomainError('VALIDATION', 'store now function must return a valid Date');
+  }
 
   let reference;
   do {
@@ -223,7 +303,7 @@ export function bookTickets(store, tierId, userId, quantity) {
     quantity,
     amountCents,
     status: 'pending',
-    createdAt: new Date().toISOString(),
+    createdAt: createdAt.toISOString(),
   };
 
   tier.sold += quantity;
