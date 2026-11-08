@@ -7,15 +7,15 @@ A Build starts from the working state of the one before it.
 |---|---:|---|---|
 | [1](build-1.md) | 4 | Domain core in the terminal | Groundwork |
 | [2](build-2.md) | 5 | Event search, sorting, backlog, first tests | S02, S03, S04, S05, S06, S16 |
-| 3 | 6 | Architecture, state machine, server skeleton | Groundwork |
+| [3](build-3.md) | 6 | Architecture, state machine, server skeleton | Groundwork |
 | 4 | 7 | Working REST API (in memory) | S02, S03, S04, S05, S06, S07 |
 | 5 | 8 | SQLite and the overselling fix | S08 |
 | 6 | 9 | Frontend on mock data | S05, S06, S07 |
 | 7 | 10 | Login, roles, and a connected app | S01, S13, S02, S03, S04 |
-| 8 | 11 | Refunds, waitlist, expiry, and real tests | S09, S10, S11, S12 |
+| 8 | 11 | Refunds, waitlist, expiry, and real tests | S04 (paid-ticket refunds), S09, S10, S11, S12 |
 | 9 | 12 | QR check-in, CI, security, and demo | S14, S15, S16 |
 
-Build 1 and Build 2 have implementation guides in this project's `docs`
+Builds 1 through 3 have implementation guides in this project's `docs`
 directory. Guides for later Builds will be added as those milestones are
 started.
 

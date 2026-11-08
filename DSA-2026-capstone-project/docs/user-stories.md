@@ -31,16 +31,34 @@ can offer different ways to attend.
 
 ## S04: Publish and unpublish an event
 
-As an organizer, I want to publish and unpublish events so that I control when
 they are visible to attendees.
+As an organizer, I want to publish and unpublish an event so that I control
+when it is visible to attendees and can take it off the public list if
+something goes wrong.
 
 - **Given** a draft event with at least one tier, **when** it is published,
   **then** its status becomes `published` and it appears in the default public
   event list.
 - **Given** a draft event without tiers, **when** it is published, **then** the
   operation fails with `INVALID_STATE` and it remains a draft.
-- **Given** a published event, **when** it is unpublished, **then** its status
-  returns to `draft` and it is hidden from the default public event list.
+- **Given** a published event, **when** the organizer unpublishes it, **then**
+  its status becomes `draft` and it no longer appears in the default public
+  event list.
+- **Given** a draft event, **when** the organizer tries to unpublish it,
+  **then** the operation fails with `INVALID_STATE` and the event remains a
+  draft.
+- **Given** an unpublished event with pending bookings, **when** it is
+  unpublished, **then** those bookings remain valid and their seats remain
+  reserved.
+- **Given** an event with paid bookings, **when** the organizer unpublishes it,
+  **then** every paid booking is refunded in full, marked refunded, and its
+  seats are released exactly once. This organizer-triggered refund is not
+  reduced by the attendee cancellation refund policy.
+
+**Implementation note:** Build 2 creates pending bookings but does not yet
+support payment or refunds. Preserve the paid-booking criterion for the build
+that adds those capabilities; do not treat unpublishing as a refund in the
+Build 2 domain alone.
 
 ## S05: Search, filter, and sort events
 

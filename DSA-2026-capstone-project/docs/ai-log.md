@@ -55,3 +55,20 @@ and `Map.get`.
   test did not account for the earlier event time on the same day. The test
   expectation was corrected to match chronological ordering; the suite then
   passed.
+
+## Build 3
+
+### Prompt 1: Architecture, state machine, and server skeleton
+- **What I asked:** Add the Build 3 architecture and booking state machine,
+  then create a Node HTTP router/server with `/health`, consistent JSON
+  errors, and static-file serving. Preserve the existing Build 2 domain and
+  ticket-inventory demo.
+- **What came back:** Added the state machine, method/path router, HTTP app,
+  port configuration, server entry point, static page, tests, and Build 3
+  architecture documentation.
+- **What was wrong (or "nothing"):** The first documentation draft treated
+  users only as a future model; it was updated to include the requested user
+  entity while clarifying that authentication and persistence are not yet
+  implemented. The current demo's General waitlist attempts return
+  `NOT_SOLD_OUT` because seats remain; that existing behavior was documented
+  and left unchanged.
