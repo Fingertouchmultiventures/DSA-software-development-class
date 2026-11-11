@@ -1,0 +1,392 @@
+{
+  "v": 2,
+  "name": "Event Ticketing API (Builds 1–9, staged)",
+  "auth": {
+    "authType": "none",
+    "authActive": true
+  },
+  "headers": [],
+  "requests": [],
+  "folders": [
+    {
+      "v": 2,
+      "name": "Build 3 — Implemented health check",
+      "folders": [],
+      "requests": [
+        {
+          "v": "1",
+          "name": "Health check",
+          "method": "GET",
+          "endpoint": "<<baseUrl>>/health",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null }
+        }
+      ]
+    },
+    {
+      "v": 2,
+      "name": "Build 4 — Implemented event and booking API",
+      "folders": [],
+      "requests": [
+        {
+          "v": "1",
+          "name": "Create event",
+          "method": "POST",
+          "endpoint": "<<baseUrl>>/api/events",
+          "params": [],
+          "headers": [
+            { "key": "content-type", "value": "application/json", "active": true },
+            { "key": "x-user-id", "value": "<<organizerId>>", "active": true }
+          ],
+          "preRequestScript": "",
+          "testScript": "pw.test(\"Created event\", () => { pw.expect(pw.response.status).toBe(201); });\npw.env.set(\"eventId\", pw.response.body.id);\n",
+          "auth": { "authType": "none", "authActive": true },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n  \"title\": \"Lagos Tech Night\",\n  \"city\": \"Lagos\",\n  \"venue\": \"Your venue\",\n  \"startsAt\": \"2026-12-05T17:00:00Z\"\n}"
+          }
+        },
+        {
+          "v": "1",
+          "name": "Add ticket tier",
+          "method": "POST",
+          "endpoint": "<<baseUrl>>/api/events/<<eventId>>/tiers",
+          "params": [],
+          "headers": [
+            { "key": "content-type", "value": "application/json", "active": true },
+            { "key": "x-user-id", "value": "<<organizerId>>", "active": true }
+          ],
+          "preRequestScript": "",
+          "testScript": "pw.test(\"Created tier\", () => { pw.expect(pw.response.status).toBe(201); });\npw.env.set(\"tierId\", pw.response.body.id);\n",
+          "auth": { "authType": "none", "authActive": true },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n  \"name\": \"General\",\n  \"priceCents\": 500000,\n  \"capacity\": 100,\n  \"guestsPerUnit\": 1\n}"
+          }
+        },
+        {
+          "v": "1",
+          "name": "Publish event",
+          "method": "POST",
+          "endpoint": "<<baseUrl>>/api/events/<<eventId>>/publish",
+          "params": [],
+          "headers": [
+            { "key": "x-user-id", "value": "<<organizerId>>", "active": true }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null }
+        },
+        {
+          "v": "1",
+          "name": "Unpublish event",
+          "method": "POST",
+          "endpoint": "<<baseUrl>>/api/events/<<eventId>>/unpublish",
+          "params": [],
+          "headers": [
+            { "key": "x-user-id", "value": "<<organizerId>>", "active": true }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null }
+        },
+        {
+          "v": "1",
+          "name": "Search published events",
+          "method": "GET",
+          "endpoint": "<<baseUrl>>/api/events",
+          "params": [
+            { "key": "city", "value": "lagos", "active": true },
+            { "key": "sort", "value": "price", "active": true }
+          ],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null }
+        },
+        {
+          "v": "1",
+          "name": "Get event details",
+          "method": "GET",
+          "endpoint": "<<baseUrl>>/api/events/<<eventId>>",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null }
+        },
+        {
+          "v": "1",
+          "name": "Create booking",
+          "method": "POST",
+          "endpoint": "<<baseUrl>>/api/bookings",
+          "params": [],
+          "headers": [
+            { "key": "content-type", "value": "application/json", "active": true },
+            { "key": "x-user-id", "value": "<<attendeeId>>", "active": true }
+          ],
+          "preRequestScript": "",
+          "testScript": "pw.test(\"Created booking\", () => { pw.expect(pw.response.status).toBe(201); });\npw.env.set(\"reference\", pw.response.body.reference);\n",
+          "auth": { "authType": "none", "authActive": true },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n  \"tierId\": \"<<tierId>>\",\n  \"quantity\": 2\n}"
+          }
+        },
+        {
+          "v": "1",
+          "name": "Get booking",
+          "method": "GET",
+          "endpoint": "<<baseUrl>>/api/bookings/<<reference>>",
+          "params": [],
+          "headers": [
+            { "key": "x-user-id", "value": "<<attendeeId>>", "active": true }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null }
+        },
+        {
+          "v": "1",
+          "name": "Pay booking (success)",
+          "method": "POST",
+          "endpoint": "<<baseUrl>>/api/bookings/<<reference>>/pay",
+          "params": [],
+          "headers": [
+            { "key": "content-type", "value": "application/json", "active": true },
+            { "key": "x-user-id", "value": "<<attendeeId>>", "active": true }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n  \"paymentToken\": \"tok_success\"\n}"
+          }
+        },
+        {
+          "v": "1",
+          "name": "Pay booking (declined; use pending booking)",
+          "method": "POST",
+          "endpoint": "<<baseUrl>>/api/bookings/<<reference>>/pay",
+          "params": [],
+          "headers": [
+            { "key": "content-type", "value": "application/json", "active": true },
+            { "key": "x-user-id", "value": "<<attendeeId>>", "active": true }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n  \"paymentToken\": \"tok_declined\"\n}"
+          }
+        },
+        {
+          "v": "1",
+          "name": "Cancel unpaid booking",
+          "method": "POST",
+          "endpoint": "<<baseUrl>>/api/bookings/<<cancelReference>>/cancel",
+          "params": [],
+          "headers": [
+            { "key": "x-user-id", "value": "<<attendeeId>>", "active": true }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null }
+        }
+      ]
+    },
+    {
+      "v": 2,
+      "name": "Build 5–6 — No new API routes",
+      "folders": [],
+      "requests": []
+    },
+    {
+      "v": 2,
+      "name": "Build 7 — Planned authentication",
+      "folders": [],
+      "requests": [
+        {
+          "v": "1",
+          "name": "Sign up (planned)",
+          "method": "POST",
+          "endpoint": "<<baseUrl>>/api/auth/signup",
+          "params": [],
+          "headers": [
+            { "key": "content-type", "value": "application/json", "active": true }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n  \"email\": \"attendee@example.test\",\n  \"password\": \"example-password-8\",\n  \"role\": \"attendee\"\n}"
+          }
+        },
+        {
+          "v": "1",
+          "name": "Log in (planned)",
+          "method": "POST",
+          "endpoint": "<<baseUrl>>/api/auth/login",
+          "params": [],
+          "headers": [
+            { "key": "content-type", "value": "application/json", "active": true }
+          ],
+          "preRequestScript": "",
+          "testScript": "pw.env.set(\"accessToken\", pw.response.body.token);\n",
+          "auth": { "authType": "none", "authActive": true },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n  \"email\": \"attendee@example.test\",\n  \"password\": \"example-password-8\"\n}"
+          }
+        },
+        {
+          "v": "1",
+          "name": "Get current user (planned)",
+          "method": "GET",
+          "endpoint": "<<baseUrl>>/api/auth/me",
+          "params": [],
+          "headers": [
+            { "key": "Authorization", "value": "Bearer <<accessToken>>", "active": true }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null }
+        },
+        {
+          "v": "1",
+          "name": "List my bookings (planned)",
+          "method": "GET",
+          "endpoint": "<<baseUrl>>/api/bookings",
+          "params": [],
+          "headers": [
+            { "key": "Authorization", "value": "Bearer <<attendeeToken>>", "active": true }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null }
+        }
+      ]
+    },
+    {
+      "v": 2,
+      "name": "Build 8 — Planned refunds and waitlist",
+      "folders": [],
+      "requests": [
+        {
+          "v": "1",
+          "name": "Preview refund (proposed)",
+          "method": "GET",
+          "endpoint": "<<baseUrl>>/api/bookings/<<reference>>/refund-quote",
+          "params": [],
+          "headers": [
+            { "key": "Authorization", "value": "Bearer <<attendeeToken>>", "active": true }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null }
+        },
+        {
+          "v": "1",
+          "name": "Join waitlist (proposed)",
+          "method": "POST",
+          "endpoint": "<<baseUrl>>/api/waitlist",
+          "params": [],
+          "headers": [
+            { "key": "Authorization", "value": "Bearer <<attendeeToken>>", "active": true },
+            { "key": "content-type", "value": "application/json", "active": true }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n  \"tierId\": \"<<tierId>>\",\n  \"quantity\": 1\n}"
+          }
+        },
+        {
+          "v": "1",
+          "name": "List my waitlist offers (proposed)",
+          "method": "GET",
+          "endpoint": "<<baseUrl>>/api/waitlist/offers",
+          "params": [],
+          "headers": [
+            { "key": "Authorization", "value": "Bearer <<attendeeToken>>", "active": true }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null }
+        },
+        {
+          "v": "1",
+          "name": "Accept waitlist offer (proposed)",
+          "method": "POST",
+          "endpoint": "<<baseUrl>>/api/waitlist/offers/<<offerId>>/accept",
+          "params": [],
+          "headers": [
+            { "key": "Authorization", "value": "Bearer <<attendeeToken>>", "active": true }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null }
+        }
+      ]
+    },
+    {
+      "v": 2,
+      "name": "Build 9 — Planned ticket and check-in",
+      "folders": [],
+      "requests": [
+        {
+          "v": "1",
+          "name": "Get signed ticket token (proposed)",
+          "method": "GET",
+          "endpoint": "<<baseUrl>>/api/bookings/<<reference>>/ticket",
+          "params": [],
+          "headers": [
+            { "key": "Authorization", "value": "Bearer <<attendeeToken>>", "active": true }
+          ],
+          "preRequestScript": "",
+          "testScript": "pw.env.set(\"ticketToken\", pw.response.body.ticketToken);\n",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null }
+        },
+        {
+          "v": "1",
+          "name": "Check in ticket (proposed)",
+          "method": "POST",
+          "endpoint": "<<baseUrl>>/api/checkin",
+          "params": [],
+          "headers": [
+            { "key": "Authorization", "value": "Bearer <<staffToken>>", "active": true },
+            { "key": "content-type", "value": "application/json", "active": true }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n  \"eventId\": \"<<eventId>>\",\n  \"ticketToken\": \"<<ticketToken>>\"\n}"
+          }
+        }
+      ]
+    }
+  ]
+}

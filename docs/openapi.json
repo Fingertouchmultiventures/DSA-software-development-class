@@ -1,0 +1,1643 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Event Ticketing API",
+    "version": "1.0.0",
+    "summary": "Staged API contract for Builds 1–9",
+    "description": "This OpenAPI document covers the course API through Builds 1–9. In this project copy, GET /health and the Build 4 event/booking operations are implemented. Build 7–9 operations are proposed for future implementation and must not be treated as live endpoints yet. Build 1–2 are terminal/domain builds; Build 5 and Build 6 do not add routes. See api-examples.md for staged examples and decisions."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Local development server"
+    }
+  ],
+  "tags": [
+    {
+      "name": "System",
+      "description": "Build 3 server health."
+    },
+    {
+      "name": "Events (Build 4)",
+      "description": "Implemented Build 4 event, tier, discovery, and publication operations."
+    },
+    {
+      "name": "Bookings (Build 4)",
+      "description": "Implemented Build 4 booking, mock payment, and unpaid cancellation operations."
+    },
+    {
+      "name": "Authentication (Build 7)",
+      "description": "Proposed account routes from the Build 7 stories."
+    },
+    {
+      "name": "Waitlist (Build 8)",
+      "description": "Proposed refund and waitlist routes from the Build 8 stories."
+    },
+    {
+      "name": "Check-in (Build 9)",
+      "description": "Proposed signed-ticket and staff check-in routes."
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": ["System"],
+        "summary": "Health check",
+        "operationId": "getHealth",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Server is running.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["status"],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "const": "ok"
+                    }
+                  }
+                },
+                "example": {
+                  "status": "ok"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/events": {
+      "get": {
+        "tags": ["Events (Build 4)"],
+        "summary": "Search published events",
+        "description": "Implemented in Build 4. Every query parameter is optional.",
+        "operationId": "searchEvents",
+        "security": [],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Search event title or venue, ignoring case."
+          },
+          {
+            "name": "city",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by city, ignoring case."
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Inclusive earliest event date."
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Inclusive latest date; a date-only value includes that full day."
+          },
+          {
+            "name": "maxPriceCents",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "description": "Maximum cheapest-tier price in whole cents/kobo."
+          },
+          {
+            "name": "onlyAvailable",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["date", "price", "availability"],
+              "default": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Matching published event summaries.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["events"],
+                  "properties": {
+                    "events": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/EventSummary"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          }
+        }
+      },
+      "post": {
+        "tags": ["Events (Build 4)"],
+        "summary": "Create a draft event",
+        "description": "Implemented in Build 4. Uses x-user-id until Build 7 replaces it with bearer authentication. The supplied event fields are sample data; provide your own.",
+        "operationId": "createEvent",
+        "security": [
+          {
+            "UserId": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewEvent"
+              },
+              "example": {
+                "title": "Lagos Tech Night",
+                "city": "Lagos",
+                "venue": "Your venue",
+                "startsAt": "2026-12-05T17:00:00Z"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Draft event created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Event"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/events/{id}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/EventId"
+        }
+      ],
+      "get": {
+        "tags": ["Events (Build 4)"],
+        "summary": "Get event details",
+        "description": "Implemented in Build 4. Draft access is restricted to its organizer.",
+        "operationId": "getEvent",
+        "security": [
+          {
+            "UserId": []
+          },
+          {}
+        ],
+        "responses": {
+          "200": {
+            "description": "Event and ticket tiers.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventDetail"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/api/events/{id}/tiers": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/EventId"
+        }
+      ],
+      "post": {
+        "tags": ["Events (Build 4)"],
+        "summary": "Add a ticket tier",
+        "description": "Implemented in Build 4. Price is integer cents/kobo, not a decimal currency amount.",
+        "operationId": "addTicketTier",
+        "security": [
+          {
+            "UserId": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewTicketTier"
+              },
+              "example": {
+                "name": "General",
+                "priceCents": 500000,
+                "capacity": 100,
+                "guestsPerUnit": 1
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Tier created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketTier"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/api/events/{id}/publish": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/EventId"
+        }
+      ],
+      "post": {
+        "tags": ["Events (Build 4)"],
+        "summary": "Publish an event",
+        "description": "Implemented in Build 4. An event must have at least one tier.",
+        "operationId": "publishEvent",
+        "security": [
+          {
+            "UserId": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Event published.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Event"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        }
+      }
+    },
+    "/api/events/{id}/unpublish": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/EventId"
+        }
+      ],
+      "post": {
+        "tags": ["Events (Build 4)"],
+        "summary": "Unpublish an event",
+        "description": "Implemented in Build 4 to complete the S04 publish/unpublish story.",
+        "operationId": "unpublishEvent",
+        "security": [
+          {
+            "UserId": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Event returned to draft state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Event"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        }
+      }
+    },
+    "/api/bookings": {
+      "get": {
+        "tags": ["Bookings (Build 4)"],
+        "summary": "List the caller's bookings",
+        "description": "Planned for Build 7. Returns only the authenticated attendee's bookings.",
+        "operationId": "listMyBookings",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bookings belonging to the caller.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["bookings"],
+                  "properties": {
+                    "bookings": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Booking"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "tags": ["Bookings (Build 4)"],
+        "summary": "Book ticket units",
+        "description": "Implemented in Build 4. Uses x-user-id until Build 7 adds login. A booking starts pending; quantity is 1–10.",
+        "operationId": "createBooking",
+        "security": [
+          {
+            "UserId": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewBooking"
+              },
+              "example": {
+                "tierId": "replace-with-tier-id",
+                "quantity": 2
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Pending booking created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Booking"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        }
+      }
+    },
+    "/api/bookings/{reference}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/BookingReference"
+        }
+      ],
+      "get": {
+        "tags": ["Bookings (Build 4)"],
+        "summary": "Get a booking",
+        "description": "Implemented in Build 4. From Build 7 onward, only the booking owner can read it.",
+        "operationId": "getBooking",
+        "security": [
+          {
+            "UserId": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Booking details.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Booking"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/api/bookings/{reference}/pay": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/BookingReference"
+        }
+      ],
+      "post": {
+        "tags": ["Bookings (Build 4)"],
+        "summary": "Pay for a booking with the mock gateway",
+        "description": "Implemented in Build 4. Sends a payment token only; never send card data. Declines leave the booking pending.",
+        "operationId": "payForBooking",
+        "security": [
+          {
+            "UserId": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaymentRequest"
+              },
+              "examples": {
+                "success": {
+                  "value": {
+                    "paymentToken": "tok_success"
+                  }
+                },
+                "declined": {
+                  "value": {
+                    "paymentToken": "tok_declined"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Booking paid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Booking"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "402": {
+            "$ref": "#/components/responses/PaymentDeclined"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        }
+      }
+    },
+    "/api/bookings/{reference}/cancel": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/BookingReference"
+        }
+      ],
+      "post": {
+        "tags": ["Bookings (Build 4)"],
+        "summary": "Cancel a booking",
+        "description": "Build 4: cancel an unpaid booking. Build 8: this operation is extended to paid bookings with the refund policy.",
+        "operationId": "cancelBooking",
+        "security": [
+          {
+            "UserId": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Booking cancelled; Build 8 may include refund details.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Booking"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        }
+      }
+    },
+    "/api/auth/signup": {
+      "post": {
+        "tags": ["Authentication (Build 7)"],
+        "summary": "Create an account",
+        "description": "Proposed Build 7 route. The password must be hashed and must never be returned or logged.",
+        "operationId": "signup",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignupRequest"
+              },
+              "example": {
+                "email": "attendee@example.test",
+                "password": "example-password-8",
+                "role": "attendee"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Account created and signed token returned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "409": {
+            "description": "Email already registered.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "EMAIL_TAKEN",
+                    "message": "An account with this email already exists"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": ["Authentication (Build 7)"],
+        "summary": "Log in",
+        "description": "Proposed Build 7 route. Unknown email and wrong password use the same error code and message.",
+        "operationId": "login",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              },
+              "example": {
+                "email": "attendee@example.test",
+                "password": "example-password-8"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Signed token returned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Credentials are invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "INVALID_CREDENTIALS",
+                    "message": "Email or password is incorrect"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "tags": ["Authentication (Build 7)"],
+        "summary": "Get the current account",
+        "description": "Proposed Build 7 route.",
+        "operationId": "getCurrentUser",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authenticated user; never includes a password or password hash.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/bookings/{reference}/refund-quote": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/BookingReference"
+        }
+      ],
+      "get": {
+        "tags": ["Waitlist (Build 8)"],
+        "summary": "Preview a cancellation refund",
+        "description": "Proposed Build 8 route to support showing the amount before cancellation is confirmed.",
+        "operationId": "getRefundQuote",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Refund estimate in whole cents.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefundQuote"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        }
+      }
+    },
+    "/api/waitlist": {
+      "post": {
+        "tags": ["Waitlist (Build 8)"],
+        "summary": "Join a tier waitlist",
+        "description": "Proposed Build 8 route; the attendee is queued FIFO for a sold-out tier.",
+        "operationId": "joinWaitlist",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JoinWaitlistRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Waitlist entry created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WaitlistEntry"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "Tier is not sold out or the user is already queued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "notSoldOut": {
+                    "value": {
+                      "error": {
+                        "code": "NOT_SOLD_OUT",
+                        "message": "The tier still has available units"
+                      }
+                    }
+                  },
+                  "alreadyQueued": {
+                    "value": {
+                      "error": {
+                        "code": "ALREADY_ON_WAITLIST",
+                        "message": "You are already on this waitlist"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/waitlist/offers": {
+      "get": {
+        "tags": ["Waitlist (Build 8)"],
+        "summary": "List my active waitlist offers",
+        "description": "Proposed Build 8 route.",
+        "operationId": "listWaitlistOffers",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Offers for the authenticated attendee.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["offers"],
+                  "properties": {
+                    "offers": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/WaitlistOffer"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/waitlist/offers/{offerId}/accept": {
+      "parameters": [
+        {
+          "name": "offerId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "tags": ["Waitlist (Build 8)"],
+        "summary": "Accept a waitlist offer",
+        "description": "Proposed Build 8 route. An expired offer returns OFFER_EXPIRED and the seat is offered to the next person.",
+        "operationId": "acceptWaitlistOffer",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Booking created from the held offer.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Booking"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "Offer is expired or cannot be accepted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "OFFER_EXPIRED",
+                    "message": "This waitlist offer has expired"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bookings/{reference}/ticket": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/BookingReference"
+        }
+      ],
+      "get": {
+        "tags": ["Check-in (Build 9)"],
+        "summary": "Get a paid booking's signed QR token",
+        "description": "Proposed Build 9 route. The signed payload contains no name, email, or other personal data.",
+        "operationId": "getTicketToken",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Signed QR token for the paid booking.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketToken"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        }
+      }
+    },
+    "/api/checkin": {
+      "post": {
+        "tags": ["Check-in (Build 9)"],
+        "summary": "Check in a ticket",
+        "description": "Proposed Build 9 route. Staff only. Verification and marking checked_in must be atomic so concurrent scans admit only one request.",
+        "operationId": "checkInTicket",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckinRequest"
+              },
+              "example": {
+                "eventId": "replace-with-event-id",
+                "ticketToken": "signed-opaque-ticket-token"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ticket admitted and check-in time recorded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "Invalid, already used, cancelled, refunded, or wrong-event ticket.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "invalid": {
+                    "value": {
+                      "error": {
+                        "code": "INVALID_TICKET",
+                        "message": "Ticket token is invalid"
+                      }
+                    }
+                  },
+                  "duplicate": {
+                    "value": {
+                      "error": {
+                        "code": "ALREADY_CHECKED_IN",
+                        "message": "Ticket was already checked in"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "UserId": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-user-id",
+        "description": "Temporary Build 4 identity header. Replaced by BearerAuth in Build 7."
+      },
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Signed expiring token introduced in Build 7."
+      }
+    },
+    "parameters": {
+      "EventId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "BookingReference": {
+        "name": "reference",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Invalid input or malformed JSON.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "error": {
+                "code": "VALIDATION",
+                "message": "Request field is invalid"
+              }
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Identity is missing, invalid, or expired.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "error": {
+                "code": "UNAUTHENTICATED",
+                "message": "Authentication is required"
+              }
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "Caller does not own the resource or lacks the required role.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "error": {
+                "code": "FORBIDDEN",
+                "message": "You are not allowed to perform this action"
+              }
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "The requested resource does not exist.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "error": {
+                "code": "NOT_FOUND",
+                "message": "Resource not found"
+              }
+            }
+          }
+        }
+      },
+      "Conflict": {
+        "description": "Current state, capacity, or transition does not allow this operation.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "error": {
+                "code": "SOLD_OUT",
+                "message": "No ticket units are available"
+              }
+            }
+          }
+        }
+      },
+      "PaymentDeclined": {
+        "description": "The mock payment was declined; booking remains pending.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "error": {
+                "code": "PAYMENT_DECLINED",
+                "message": "Payment was declined"
+              }
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "required": ["error"],
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": ["code", "message"],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "NewEvent": {
+        "type": "object",
+        "required": ["title", "city", "startsAt"],
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "city": {
+            "type": "string",
+            "minLength": 1
+          },
+          "venue": {
+            "type": "string",
+            "default": ""
+          },
+          "startsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "hallCapacity": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "Event": {
+        "type": "object",
+        "required": ["id", "organizerId", "title", "city", "venue", "startsAt", "status"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "organizerId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "venue": {
+            "type": "string"
+          },
+          "startsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "hallCapacity": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": ["draft", "published"]
+          },
+          "tierIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "EventSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "venue": {
+            "type": "string"
+          },
+          "startsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "const": "published"
+          },
+          "hallCapacity": {
+            "type": "integer"
+          },
+          "tierCount": {
+            "type": "integer"
+          },
+          "minPriceCents": {
+            "type": ["integer", "null"]
+          },
+          "seatsLeft": {
+            "type": "integer"
+          }
+        }
+      },
+      "EventDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Event"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "tiers": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/TicketTier"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "NewTicketTier": {
+        "type": "object",
+        "required": ["name", "priceCents", "capacity"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "priceCents": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Whole cents/kobo."
+          },
+          "capacity": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "guestsPerUnit": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 1
+          }
+        }
+      },
+      "TicketTier": {
+        "type": "object",
+        "required": ["id", "eventId", "name", "priceCents", "capacity", "sold", "guestsPerUnit"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "eventId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "priceCents": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "capacity": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "sold": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "guestsPerUnit": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "seatsLeft": {
+            "type": "integer"
+          }
+        }
+      },
+      "NewBooking": {
+        "type": "object",
+        "required": ["tierId", "quantity"],
+        "properties": {
+          "tierId": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10
+          }
+        }
+      },
+      "Booking": {
+        "type": "object",
+        "required": ["id", "reference", "userId", "tierId", "quantity", "amountCents", "status", "createdAt"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "tierId": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "amountCents": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "paid", "cancelled", "refunded", "checked_in"]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PaymentRequest": {
+        "type": "object",
+        "required": ["paymentToken"],
+        "properties": {
+          "paymentToken": {
+            "type": "string",
+            "enum": ["tok_success", "tok_declined"]
+          }
+        }
+      },
+      "SignupRequest": {
+        "type": "object",
+        "required": ["email", "password", "role"],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8,
+            "writeOnly": true
+          },
+          "role": {
+            "type": "string",
+            "enum": ["attendee", "organizer", "staff"]
+          }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "writeOnly": true
+          }
+        }
+      },
+      "AuthResponse": {
+        "type": "object",
+        "required": ["token", "user"],
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "user": {
+            "$ref": "#/components/schemas/User"
+          }
+        }
+      },
+      "User": {
+        "type": "object",
+        "required": ["id", "email", "role"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "role": {
+            "type": "string",
+            "enum": ["attendee", "organizer", "staff"]
+          }
+        }
+      },
+      "RefundQuote": {
+        "type": "object",
+        "required": ["bookingReference", "amountCents", "percentage"],
+        "properties": {
+          "bookingReference": {
+            "type": "string"
+          },
+          "amountCents": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "percentage": {
+            "type": "integer",
+            "enum": [0, 50, 100]
+          }
+        }
+      },
+      "JoinWaitlistRequest": {
+        "type": "object",
+        "required": ["tierId", "quantity"],
+        "properties": {
+          "tierId": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10
+          }
+        }
+      },
+      "WaitlistEntry": {
+        "type": "object",
+        "required": ["id", "tierId", "quantity", "createdAt"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "tierId": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "WaitlistOffer": {
+        "type": "object",
+        "required": ["id", "tierId", "quantity", "expiresAt"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "tierId": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "TicketToken": {
+        "type": "object",
+        "required": ["ticketToken"],
+        "properties": {
+          "ticketToken": {
+            "type": "string",
+            "description": "Signed opaque token; no personally identifying data."
+          }
+        }
+      },
+      "CheckinRequest": {
+        "type": "object",
+        "required": ["eventId", "ticketToken"],
+        "properties": {
+          "eventId": {
+            "type": "string"
+          },
+          "ticketToken": {
+            "type": "string"
+          }
+        }
+      },
+      "CheckinResult": {
+        "type": "object",
+        "required": ["status", "reference", "checkedInAt"],
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "checked_in"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "checkedInAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    }
+  }
+}

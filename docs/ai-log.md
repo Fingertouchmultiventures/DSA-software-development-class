@@ -55,3 +55,44 @@ and `Map.get`.
   test did not account for the earlier event time on the same day. The test
   expectation was corrected to match chronological ordering; the suite then
   passed.
+
+## Build 3
+
+### Prompt 1: Architecture, state machine, and server skeleton
+- **What I asked:** Add the Build 3 architecture and booking state machine,
+  then create a Node HTTP router/server with `/health`, consistent JSON
+  errors, and static-file serving. Preserve the existing Build 2 domain and
+  ticket-inventory demo.
+- **What came back:** Added the state machine, method/path router, HTTP app,
+  port configuration, server entry point, static page, tests, and Build 3
+  architecture documentation.
+- **What was wrong (or "nothing"):** The first documentation draft treated
+  users only as a future model; it was updated to include the requested user
+  entity while clarifying that authentication and persistence are not yet
+  implemented. The current demo's General waitlist attempts return
+  `NOT_SOLD_OUT` because seats remain; that existing behavior was documented
+  and left unchanged.
+
+## Build 4
+
+### Prompt 1: Build 4 API and all-build API references
+
+- **What I asked:** Add the Build 4 REST API with an async in-memory
+  repository, event and booking services, a mock payment gateway, API routes,
+  and real-server tests. Prepare the Build 1–9 API guide, OpenAPI contract,
+  and importable Hoppscotch collection/environment.
+- **What came back:** Added event/tier/publish/search and booking/pay/cancel
+  routes, service/repository/gateway modules, API tests, staged API docs, and
+  Hoppscotch imports. Build 7–9 operations are explicitly proposed for their
+  later milestones, not claimed as live.
+- **What was wrong (or "nothing"):** The first documentation draft called
+  Build 4 routes planned; after implementing them, the API guide and OpenAPI
+  status were corrected. The mock gateway was tightened to accept only its
+  two documented test tokens. Build 5's atomic concurrency protection,
+  authentication, refunds, waitlists, and QR check-in remain future work.
+- **Rules I was unsure about:** Event detail reads for draft events require
+  the organizer's `x-user-id`; Build 4 does not yet have account authentication.
+  Build 5 must replace the in-memory booking race rather than adding locks.
+- **Verification:** `node --test test/api.test.js test/httpApp.test.js`
+  passed. The full `npm test` run passed all 185 tests. OpenAPI and Hoppscotch
+  JSON files parsed successfully, and every OpenAPI `$ref` resolved.

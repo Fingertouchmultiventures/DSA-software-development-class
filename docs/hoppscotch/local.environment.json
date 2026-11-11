@@ -1,0 +1,19 @@
+{
+  "v": 1,
+  "id": "ticketing-local-build-1-9",
+  "name": "Event Ticketing (local, Builds 1-9)",
+  "variables": [
+    { "key": "baseUrl", "value": "http://localhost:3000", "secret": false },
+    { "key": "organizerId", "value": "org-1", "secret": false },
+    { "key": "attendeeId", "value": "ada", "secret": false },
+    { "key": "eventId", "value": "", "secret": false },
+    { "key": "tierId", "value": "", "secret": false },
+    { "key": "reference", "value": "", "secret": false },
+    { "key": "cancelReference", "value": "", "secret": false },
+    { "key": "accessToken", "value": "", "secret": true },
+    { "key": "attendeeToken", "value": "", "secret": true },
+    { "key": "staffToken", "value": "", "secret": true },
+    { "key": "offerId", "value": "", "secret": false },
+    { "key": "ticketToken", "value": "", "secret": true }
+  ]
+}

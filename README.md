@@ -59,6 +59,13 @@ The capstone is built in nine Build classes, one milestone each. Every class fol
 
 The three hard problems arrive where you would expect: overselling in Build 5, and refunds and waitlists in Build 8.
 
+The implemented Build 4 API is documented in [docs/api-examples.md](docs/api-examples.md)
+and [docs/openapi.json](docs/openapi.json). Import
+[docs/hoppscotch/build-1-9.collection.json](docs/hoppscotch/build-1-9.collection.json)
+and [docs/hoppscotch/local.environment.json](docs/hoppscotch/local.environment.json)
+into Hoppscotch to try the implemented calls and review the proposed later-build
+requests.
+
 For every Build class, work on a branch named `build-N` (for example `build-2`), open a pull request into `main`, and merge it.
 
 ## Stack

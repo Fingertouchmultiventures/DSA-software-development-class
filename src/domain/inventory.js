@@ -1,8 +1,16 @@
-import { newId, newReference } from './ids.js';
-import { DomainError } from './errors.js';
-import { Queue } from './waitlistQueue.js';
+import { newId, newReference } from '../domain/ids.js';
+import { DomainError } from '../domain/errors.js';
+import {
+  MAX_TICKETS_PER_BOOKING,
+  requireDate,
+  requireQuantity,
+  requireRecord,
+  requireText,
+  requireWholeNumber,
+} from './validation.js';
+import { Queue } from '../domain/waitlistQueue.js';
 
-export const MAX_TICKETS_PER_BOOKING = 10;
+export { MAX_TICKETS_PER_BOOKING };
 
 const HOLDS_SEATS = new Set(['pending', 'paid']);
 
@@ -34,32 +42,6 @@ function requireStore(store) {
   }
 }
 
-function requireRecord(value, field) {
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
-    throw new DomainError('VALIDATION', `${field} must be an object`);
-  }
-}
-
-function requireText(value, field) {
-  if (typeof value !== 'string' || value.trim() === '') {
-    throw new DomainError('VALIDATION', `${field} is required`);
-  }
-  return value.trim();
-}
-
-function requireWholeNumber(value, field, min) {
-  if (!Number.isSafeInteger(value) || value < min) {
-    throw new DomainError('VALIDATION', `${field} must be a whole number of at least ${min}`);
-  }
-  return value;
-}
-
-function requireQuantity(quantity) {
-  if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > MAX_TICKETS_PER_BOOKING) {
-    throw new DomainError('VALIDATION', `quantity must be between 1 and ${MAX_TICKETS_PER_BOOKING}`);
-  }
-}
-
 function getTier(store, tierId) {
   const tier = store.tiers.get(tierId);
   if (!tier) throw new DomainError('NOT_FOUND', 'Ticket tier not found');
@@ -83,14 +65,7 @@ export function createEvent(store, details) {
   if (typeof venue !== 'string') {
     throw new DomainError('VALIDATION', 'Venue must be text');
   }
-  const startsAt = details.startsAt;
-  if (typeof startsAt !== 'string' || startsAt.trim() === '') {
-    throw new DomainError('VALIDATION', 'startsAt must be a valid date');
-  }
-  const date = new Date(startsAt);
-  if (Number.isNaN(date.getTime())) {
-    throw new DomainError('VALIDATION', 'startsAt must be a valid date');
-  }
+  const startsAt = requireDate(details.startsAt, 'startsAt');
   const hallCapacity = details.hallCapacity === undefined
     ? undefined
     : requireWholeNumber(details.hallCapacity, 'hallCapacity', 1);
@@ -101,7 +76,7 @@ export function createEvent(store, details) {
     title,
     city,
     venue: venue.trim(),
-    startsAt: date.toISOString(),
+    startsAt,
     hallCapacity,
     status: 'draft',
     tierIds: [],
