@@ -103,3 +103,14 @@ are noticed early.
 
 - **Given** the project, **when** `npm test` is run, **then** Node's built-in
   test runner executes the suite and exits unsuccessfully if any test fails.
+
+## S08: Sell the last ticket to only one attendee
+
+As an attendee, I want to be certain the last ticket is sold to only one
+person, so that nobody turns up to a full event.
+
+- **Given** exactly one seat left, **when** 50 attendees try to book at the
+  same moment, **then** exactly one booking succeeds, 49 receive `SOLD_OUT`,
+  and sold seats never exceed capacity.
+- **Given** the database reservation fix is removed, **when** the overselling
+  test runs, **then** the test fails.

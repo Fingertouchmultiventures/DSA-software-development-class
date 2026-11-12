@@ -11,6 +11,9 @@
 - Errors always come back in the same shape.
 - `npm test` includes API-level tests.
 
+Build 4's `createApp()` still defaults to the in-memory repository for isolated
+API tests. The production server in Build 5 injects the SQLite repository.
+
 The current project API reference is [api-examples.md](api-examples.md), with
 its OpenAPI contract in [openapi.json](openapi.json) and an importable
 [Hoppscotch collection](hoppscotch/build-1-9.collection.json).

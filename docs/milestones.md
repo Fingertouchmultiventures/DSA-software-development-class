@@ -15,7 +15,7 @@ A Build starts from the working state of the one before it.
 | 8 | 11 | Refunds, waitlist, expiry, and real tests | S04 (paid-ticket refunds), S09, S10, S11, S12 |
 | 9 | 12 | QR check-in, CI, security, and demo | S14, S15, S16 |
 
-Builds 1 through 3 have implementation guides in this project's `docs`
+Builds 1 through 5 have implementation guides in this project's `docs`
 directory. Guides for later Builds will be added as those milestones are
 started.
 
