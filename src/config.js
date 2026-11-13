@@ -1,4 +1,9 @@
+import { fileURLToPath } from 'node:url';
+
 export const DEFAULT_PORT = 3000;
+const DEFAULT_DATABASE_PATH = fileURLToPath(new URL('../data/ticketing.db', import.meta.url));
+
+export const DATABASE_PATH = process.env.DATABASE_PATH || DEFAULT_DATABASE_PATH;
 
 export function getPort(value = process.env.PORT) {
   if (value === undefined || value === '') return DEFAULT_PORT;

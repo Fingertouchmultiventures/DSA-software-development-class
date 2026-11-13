@@ -40,37 +40,40 @@ benchmark are separate scripts that use the domain modules.
 ## In-memory data
 
 `createStore()` creates Maps for events, ticket tiers, bookings, bookings by
-reference, and per-tier waitlists. A demo run creates a fresh store, so its
-data does not persist after the process exits.
+reference, and per-tier waitlists. `scripts/demo.js` still creates a fresh
+store, so its data does not persist after the process exits. The Build 4
+`createApp()` default also remains in-memory for isolated API tests.
 
 `object.js` separately exports a pre-populated Map for the introductory
 `index.js` example. It is not the same store created by the domain demo.
 
-There is no HTTP layer, browser interface, or persistent database in this
-build.
+The production server uses the SQLite repository added in Build 5. Its
+database is `data/ticketing.db` by default, or the path set in `DATABASE_PATH`.
 
 ## Build 3: Layered architecture
 
 The existing domain modules remain the home of business rules. Build 3 added
-the HTTP boundary; Build 4 now connects it to event and booking services and an
-in-memory repository. SQLite persistence and atomic booking are introduced in
-Build 5.
+the HTTP boundary; Build 4 connected it to event and booking services and a
+memory repository. The production server now uses the SQLite repository added
+in Build 5, where booking reservations are atomic.
 
 ```mermaid
 flowchart TB
   routes[HTTP routes and server] --> services[Services - Build 4]
   services --> rules[Domain rules - existing]
-  services --> repositories[Repositories - Build 4]
-  repositories --> data[(Data store - Build 4)]
+  services --> repositories[Repositories - Build 4 and 5]
+  repositories --> memory[(Memory adapter - tests)]
+  repositories --> sqlite[(SQLite database - server)]
   demo[scripts/demo.js] --> rules
 ```
 
 **Chart description:** The HTTP routes and server form the entry point for
 client requests. They pass application work to services, which coordinate
-domain rules and repositories. Repositories access the data store. The demo
-script is separate from the HTTP path and calls the domain rules directly.
-Arrows show allowed dependencies; lower layers do not call back into upper
-layers.
+domain rules and repositories. Repositories access either the in-memory
+adapter used by tests or the SQLite database used by the production server.
+The demo script is separate from the HTTP path and calls the domain rules
+directly. Arrows show allowed dependencies; lower layers do not call back into
+upper layers.
 
 - **Routes and server** may translate HTTP requests and responses; they may
   not contain business rules or access data directly.
@@ -113,16 +116,15 @@ layer and exercises the domain directly.
 
 ## Build 3: Data model
 
-The diagram below is the planned relational model. Build 3 still uses the
-existing in-memory `Map` store: it has no persisted user or organizer records,
-authentication, or relational database. In the current implementation,
-`event.organizerId` and `booking.userId` are stored as strings and are not
-validated against user or organizer records.
+The SQLite schema introduced in Build 5 enforces the user, event, ticket-tier,
+and booking relationships. Until Build 7 adds signup, user IDs from the
+`x-user-id` header are inserted as minimal user rows; authentication and
+organizer profiles are not implemented. The Build 1 demo continues to use its
+in-memory `Map` store.
 
 ```mermaid
 erDiagram
-  USERS ||--o| ORGANIZERS : may_have_profile
-  ORGANIZERS ||--o{ EVENTS : organizes
+  USERS ||--o{ EVENTS : organizes
   USERS ||--o{ BOOKINGS : makes
   EVENTS ||--o{ TICKET_TIERS : offers
   TICKET_TIERS ||--o{ BOOKINGS : reserves
@@ -131,12 +133,6 @@ erDiagram
     string id PK
     string name
     string email
-    datetime createdAt
-  }
-  ORGANIZERS {
-    string id PK
-    string userId FK
-    string displayName
     datetime createdAt
   }
   EVENTS {
@@ -171,21 +167,20 @@ erDiagram
   }
 ```
 
-`ORGANIZERS` is a planned profile associated with a user; organizer
-authentication and profiles do not exist yet. Event ownership is shown through
-that planned profile. Ticket-tier capacity counts sellable units.
+An organizer profile remains a future Build 7 concept; the current schema
+stores the organizing user's ID directly on an event. Ticket-tier capacity
+counts sellable units.
 `guestsPerUnit` converts sellable units to attendee places, so a Couple Pass
 counts as two places and a table tier counts as the number of guests it admits.
 `hallCapacity` limits the total attendee places allocated across an event's
-tiers. The `tierIds` array is how the current in-memory event links to tiers;
-the relational model represents that relationship through `TICKET_TIERS.eventId`.
+tiers. The in-memory event uses a `tierIds` array; SQLite represents that
+relationship through `TICKET_TIERS.eventId`. SQLite also checks that sold units
+are between zero and capacity, and booking references are unique.
 
-**Chart description:** The ER diagram shows users making bookings and
-optionally having an organizer profile. Organizer profiles own events; events
-offer ticket tiers; bookings reserve a tier. `PK` marks each entity's primary
-key and `FK` marks a planned foreign-key relationship. These relationships
-describe the intended relational model and are not enforced by the current
-in-memory store.
+**Chart description:** The ER diagram shows users organizing events and
+making bookings. Events offer ticket tiers; bookings reserve a tier. `PK`
+marks each entity's primary key and `FK` marks a foreign-key relationship
+enforced by the SQLite schema.
 
 ### User ER diagram
 
@@ -204,12 +199,12 @@ need organizer capabilities.
 
 ### Event ER diagram
 
-Each event belongs to one organizer profile and offers ticket tiers. A tier may
+Each event belongs to one organizer user and offers ticket tiers. A tier may
 be referenced by many bookings.
 
 ```mermaid
 erDiagram
-  ORGANIZERS ||--o{ EVENTS : organizes
+  USERS ||--o{ EVENTS : organizes
   EVENTS ||--o{ TICKET_TIERS : offers
   TICKET_TIERS ||--o{ BOOKINGS : reserved_in
 ```
@@ -241,8 +236,8 @@ seat-release side effects are implemented in later builds.
 
 ### Booking creation flowchart
 
-This flow describes the current `bookTickets` domain operation, not an HTTP
-endpoint. Booking API routes are not implemented yet.
+The API service validates the caller and event state before the SQLite
+repository reserves inventory and creates a booking.
 
 ```mermaid
 flowchart TD
@@ -251,20 +246,19 @@ flowchart TD
   valid -->|No| invalid[Return validation error]
   valid -->|Yes| tier{Does the ticket tier exist?}
   tier -->|No| missing[Return not found error]
-  tier -->|Yes| availability{Are enough units available?}
-  availability -->|No| soldout[Return sold out error]
-  availability -->|Yes| total{Is the booking total a safe amount?}
-  total -->|No| amountError[Return validation error]
-  total -->|Yes| create[Create pending booking]
-  create --> reserve[Increase tier sold count]
-  reserve --> success([Return booking])
+  tier -->|Yes|   availability{Does the atomic conditional update reserve the units?}
+  availability -->|No rows changed| soldout[Return SOLD_OUT]
+  availability -->|One row changed| total{Is the booking total safe?}
+  total -->|No| amountError[Rollback and return validation error]
+  total -->|Yes| create[Insert pending booking in transaction]
+  create --> success([Commit and return booking])
 ```
 
-**Chart description:** The booking operation validates the supplied tier,
-user, and quantity, looks up the tier, and checks its remaining sellable units.
-If any check fails, it returns an error without creating a booking. If the
-booking total is valid, it creates a `pending` booking, increases the tier's
-sold count, and returns the booking.
+**Chart description:** After the service validates the user and published
+event, the repository checks the booking total and performs one conditional
+SQLite update that reserves the requested units only if capacity remains. No
+changed row means `SOLD_OUT`. Otherwise, the repository inserts the pending
+booking in the same transaction and commits both changes together.
 
 ```mermaid
 stateDiagram-v2

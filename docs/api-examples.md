@@ -58,6 +58,24 @@ Expected response:
 {"status":"ok"}
 ```
 
+### If the browser says `API route not found`
+
+The search example below is a real `GET` request. With the current server it
+returns `200` and a JSON object such as `{"events":[]}` (or matching events if
+the database contains them). If it instead returns
+`{"error":{"code":"NOT_FOUND","message":"API route not found"}}`, port 3000 is
+probably being served by an older process or a server started from another
+project copy:
+
+1. Stop the old server in the terminal where it is running with `Ctrl+C`.
+2. In this project root (the folder containing this `package.json`), run
+   `npm start`.
+3. Retry the `GET` URL.
+
+The API examples are endpoints, not website pages. Opening a `GET` URL in the
+browser is useful for a quick check, but requests with JSON bodies or headers
+should be sent with PowerShell `Invoke-RestMethod`, `curl`, or Hoppscotch.
+
 ## Build 1–3: terminal and health check
 
 Builds 1–2 are domain exercises and have no HTTP API. Run the existing

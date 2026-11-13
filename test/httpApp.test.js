@@ -56,6 +56,22 @@ describe('HTTP application', () => {
     assert.equal(response.status, 200);
     assert.match(response.contentType, /text\/html/);
     assert.match(response.body, /Event Ticketing/);
+    assert.match(response.body, /href="\/docs"/);
+  });
+
+  it('serves Scalar API docs at /docs and the OpenAPI contract at /openapi.json', async () => {
+    const page = await request('/docs');
+    assert.equal(page.status, 200);
+    assert.match(page.contentType, /text\/html/);
+    assert.match(page.body, /id="api-reference"/);
+    assert.match(page.body, /data-url="\/openapi\.json"/);
+    assert.match(page.body, /data-configuration='\{"theme":"dark"\}'/);
+    assert.match(page.body, /@scalar\/api-reference/);
+
+    const specification = await request('/openapi.json');
+    assert.equal(specification.status, 200);
+    assert.match(specification.contentType, /application\/json/);
+    assert.equal(JSON.parse(specification.body).openapi, '3.1.0');
   });
 
   it('returns consistent JSON for an unknown API route', async () => {

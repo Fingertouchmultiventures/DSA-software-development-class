@@ -96,3 +96,31 @@ and `Map.get`.
 - **Verification:** `node --test test/api.test.js test/httpApp.test.js`
   passed. The full `npm test` run passed all 185 tests. OpenAPI and Hoppscotch
   JSON files parsed successfully, and every OpenAPI `$ref` resolved.
+
+## Build 5
+
+### Prompt 1: Persist data in SQLite and fix overselling
+
+- **What I asked:** Replace the production server's in-memory repository with
+  SQLite while keeping the Build 4 services unchanged. Add database
+  constraints, an idempotent seed command, and a 50-request last-seat demo and
+  test using an atomic conditional update.
+- **What came back:** Added the SQLite schema, connection, repository, seed and
+  oversell scripts, persistent server wiring, restart/constraint/concurrency
+  tests, and Build 5 documentation.
+- **What was wrong (or "nothing"):** The first integration test attempted to
+  listen on a server that `startServer()` had already started; it now waits for
+  that listener. The SQLite repository now defaults to a fresh in-memory
+  database for isolated tests, while the production server explicitly passes
+  its persistent file path.
+- **Why not a JavaScript lock or two availability checks:** A process-local
+  lock cannot coordinate other server processes or instances. A separate
+  availability check still leaves a race before the write, so the conditional
+  database update must perform both the check and reservation atomically.
+- **Verification:** `npm test` passed all 196 tests. `npm run oversell` showed
+  50 accepted booking claims for the one seat before the fix and one success
+  plus 49 `SOLD_OUT` results after it. Running `npm run seed` twice against a
+  temporary database seeded three events once and left them unchanged on the
+  second run. Removing the conditional capacity predicate made
+  `test/oversell.test.js` fail as expected; the atomic predicate was restored
+  before the final test run.

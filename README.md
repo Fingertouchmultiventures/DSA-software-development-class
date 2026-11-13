@@ -59,6 +59,10 @@ The capstone is built in nine Build classes, one milestone each. Every class fol
 
 The three hard problems arrive where you would expect: overselling in Build 5, and refunds and waitlists in Build 8.
 
+Build 5 stores API data in SQLite at `data/ticketing.db` and reserves seats
+atomically. Run `npm run seed` to add sample events once, or `npm run oversell`
+to compare the unsafe read/check/write flow with the fixed booking flow.
+
 The implemented Build 4 API is documented in [docs/api-examples.md](docs/api-examples.md)
 and [docs/openapi.json](docs/openapi.json). Import
 [docs/hoppscotch/build-1-9.collection.json](docs/hoppscotch/build-1-9.collection.json)
@@ -138,7 +142,7 @@ Follow the "Done when" list in [docs/build-1.md](docs/build-1.md). Work on a bra
 ## Documents
 
 - [docs/milestones.md](docs/milestones.md): the nine Builds at a glance, with a glossary.
-- [docs/build-1.md](docs/build-1.md) to [docs/build-9.md](docs/build-9.md): one file per Build, with its deliverables and its user stories with acceptance criteria.
+- [docs/build-1.md](docs/build-1.md) to [docs/build-5.md](docs/build-5.md): the completed build guides and their acceptance criteria. Later guides will be added when those milestones start.
 - [docs/user-stories.md](docs/user-stories.md): the product backlog and the definition of done.
 
 ## Rules of the road
@@ -151,7 +155,9 @@ Follow the "Done when" list in [docs/build-1.md](docs/build-1.md). Work on a bra
 ## Project layout
 
 ```
-src/domain/     plain rules: no I/O, no HTTP
-scripts/        things you run by hand
-docs/           milestones and user stories
+src/domain/        plain rules: no I/O, no HTTP
+src/repositories/  in-memory and SQLite data adapters
+src/db/            SQLite schema and connection setup
+scripts/           demos, seed data, and benchmarks
+docs/              milestones, build guides, and user stories
 ```

@@ -17,6 +17,7 @@ import { Router } from './router.js';
 import { registerApiRoutes } from './routes.js';
 
 const DEFAULT_PUBLIC_DIR = fileURLToPath(new URL('../../public/', import.meta.url));
+const OPENAPI_SPEC_PATH = fileURLToPath(new URL('../../docs/openapi.json', import.meta.url));
 const MAX_BODY_BYTES = 1_000_000;
 const CONTENT_TYPES = new Map([
   ['.css', 'text/css; charset=utf-8'],
@@ -97,7 +98,11 @@ async function serveStatic(request, response, pathname, publicDir) {
     throw new HttpError(404, 'NOT_FOUND', 'File not found');
   }
 
-  const relativePath = decodedPath === '/' ? 'index.html' : decodedPath.replace(/^[/\\]+/, '');
+  const relativePath = decodedPath === '/'
+    ? 'index.html'
+    : decodedPath === '/docs' || decodedPath === '/docs/'
+      ? 'docs.html'
+      : decodedPath.replace(/^[/\\]+/, '');
   const candidate = resolve(root, relativePath);
   if (!isWithinDirectory(root, candidate)) {
     throw new HttpError(404, 'NOT_FOUND', 'File not found');
@@ -175,6 +180,10 @@ export function createApp({
   const bookingService = createBookingService(repository, paymentGateway);
   router.add('GET', '/health', ({ response, request }) => {
     sendJson(response, 200, { status: 'ok' }, request.method);
+  });
+  router.add('GET', '/openapi.json', async ({ response, request }) => {
+    const specification = JSON.parse(await readFile(OPENAPI_SPEC_PATH, 'utf8'));
+    sendJson(response, 200, specification, request.method);
   });
   registerApiRoutes(router, { eventService, bookingService });
 

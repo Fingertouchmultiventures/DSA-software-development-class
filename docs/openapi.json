@@ -3,8 +3,8 @@
   "info": {
     "title": "Event Ticketing API",
     "version": "1.0.0",
-    "summary": "Staged API contract for Builds 1–9",
-    "description": "This OpenAPI document covers the course API through Builds 1–9. In this project copy, GET /health and the Build 4 event/booking operations are implemented. Build 7–9 operations are proposed for future implementation and must not be treated as live endpoints yet. Build 1–2 are terminal/domain builds; Build 5 and Build 6 do not add routes. See api-examples.md for staged examples and decisions."
+    "summary": "Implemented API and proposed later-build contract",
+    "description": "GET /health and the Build 4 event and booking operations are implemented. Build 5 keeps the same routes, persists data in SQLite, and reserves seats atomically. Build 7–9 operations are proposed and are not live endpoints. Build 1–2 are terminal/domain builds and Build 6 does not add routes. See api-examples.md for examples and the Build 5 guide for persistence and concurrency details."
   },
   "servers": [
     {
@@ -19,11 +19,11 @@
     },
     {
       "name": "Events (Build 4)",
-      "description": "Implemented Build 4 event, tier, discovery, and publication operations."
+      "description": "Implemented event, tier, discovery, and publication operations. Build 5 uses SQLite without changing these paths."
     },
     {
       "name": "Bookings (Build 4)",
-      "description": "Implemented Build 4 booking, mock payment, and unpaid cancellation operations."
+      "description": "Implemented booking, mock payment, and unpaid cancellation operations. Build 5 atomically reserves seats in SQLite."
     },
     {
       "name": "Authentication (Build 7)",
